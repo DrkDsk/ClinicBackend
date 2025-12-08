@@ -25,7 +25,15 @@ class GetRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::in(RoleClass::all())]
+            'role' => ['required', 'string', Rule::in(RoleClass::all())],
+            'perPage' => ['nullable', 'integer', 'min:1'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'perPage' => $this->perPage ?? 10,
+        ]);
     }
 }

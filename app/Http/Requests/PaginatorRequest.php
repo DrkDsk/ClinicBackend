@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateReceptionsRequst extends FormRequest
+class PaginatorRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,15 +23,14 @@ class CreateReceptionsRequst extends FormRequest
     public function rules(): array
     {
         return [
-            'person' => ['required', 'array'],
-            'person.name' => ['required', 'string'],
-            'person.last_name' => ['required', 'string'],
-            'person.email' => ['required', 'email'],
-            'person.birthday' => ['required', 'date', 'before:today'],
-            'person.phone' => ['required', 'digits:10'],
-
-            'user' => ['required', 'array'],
-            'user.password' => ['required_with:user', 'string']
+            'perPage' => ['nullable', 'integer', 'min:1'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'perPage' => $this->perPage ?? 10,
+        ]);
     }
 }

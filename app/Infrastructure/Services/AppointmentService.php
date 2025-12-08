@@ -5,11 +5,15 @@ namespace App\Infrastructure\Services;
 use App\Classes\Const\AppointmentsStatus;
 use App\Classes\DTOs\Appointment\CreateAppointmentDTO;
 use App\Exceptions\AppointmentExistsException;
+use App\Exceptions\PersonExistException;
 use App\Exceptions\ScheduleNotAvailableException;
+use App\Factories\CreatePatientDTOFactory;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Repositories\Contract\AppointmentRepositoryInterface;
+use App\Repositories\Contract\PatientRepositoryInterface;
 use App\Services\Contract\AppointmentServiceInterface;
+use App\Services\Contract\PatientServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +21,10 @@ use Throwable;
 
 readonly class AppointmentService implements AppointmentServiceInterface
 {
-    public function __construct(private AppointmentRepositoryInterface $appointmentRepository)
+    public function __construct(
+        private AppointmentRepositoryInterface $appointmentRepository,
+        private PatientRepositoryInterface     $patientRepository,
+        private PatientServiceInterface        $patientService)
     {
     }
 
@@ -26,11 +33,25 @@ readonly class AppointmentService implements AppointmentServiceInterface
      */
     public function create(CreateAppointmentDTO $appointmentData): Appointment
     {
-        return DB::transaction(function () use ($appointmentData) {
-            $scheduledAt = $appointmentData->scheduledAt->format('Y-m-d H:i');
+
+        $scheduledAt = $appointmentData->scheduledAt->format('Y-m-d H:i');
+        $doctorId = $appointmentData->doctorId;
+        $patientId = $appointmentData->patientId;
+        $personData = $appointmentData->createPersonDTO->personDTO;
+        $typeAppointmentId = $appointmentData->typeAppointmentId;
+        $note = $appointmentData->note;
+
+        return DB::transaction(function () use (
+            $scheduledAt,
+            $doctorId,
+            $patientId,
+            $personData,
+            $typeAppointmentId,
+            $note
+        ) {
 
             $appointment = $this->appointmentRepository->findByScheduled(
-                doctorId: $appointmentData->doctorId,
+                doctorId: $doctorId,
                 scheduledAt: $scheduledAt
             );
 
@@ -41,18 +62,31 @@ readonly class AppointmentService implements AppointmentServiceInterface
                 throw new AppointmentExistsException($messageException);
             }
 
-            return $this->appointmentRepository->create([
+            $patientData = CreatePatientDTOFactory::fromData(personData: $personData);
+            $typeAppointmentId = $typeAppointmentId ?? $this->appointmentRepository->findTypeAppointment()->id;
+
+            if (!$patientId) {
+                try {
+                    $patientId = $this->patientService->create($patientData)->id;
+                } catch (PersonExistException $e) {
+                    $personId = $e->getId();
+                    $patient = $this->patientRepository->findByField('person_id', $personId);
+                    $patientId = $patient->id;
+                }
+            }
+
+            return $this->appointmentRepository->firstOrCreate([
                 'scheduled_at' => $scheduledAt,
-                'patient_id' => $appointmentData->patientId,
-                'doctor_id' => $appointmentData->doctorId,
-                'type_appointment_id' => $appointmentData->typeAppointmentId,
-                'note' => $appointmentData->note,
+                'patient_id' => $patientId,
+                'doctor_id' => $doctorId,
+                'type_appointment_id' => $typeAppointmentId,
+                'note' => $note,
                 'status' => AppointmentsStatus::SCHEDULED
             ]);
         });
     }
 
-    public function getAllPaginated(int $perPage) : LengthAwarePaginator
+    public function getAllPaginated(int $perPage): LengthAwarePaginator
     {
         return $this->appointmentRepository->paginate($perPage, ['doctor', 'patient', 'typeAppointment']);
     }
@@ -60,21 +94,21 @@ readonly class AppointmentService implements AppointmentServiceInterface
     /**
      * @throws Throwable
      */
-    public function getAvailableAppointmentsSchedule(Doctor $doctor, string $strDate): array
+    public function getAvailableAppointmentsSchedule(Doctor $doctor, Carbon $date): array
     {
-        $date = Carbon::parse($strDate);
         $indexDay = $date->dayOfWeek;
         $appointments = $doctor->appointments()->get()->pluck('scheduled_at');
         $availableDates = $doctor->schedule()->where('weekday', $indexDay)->first();
 
-        throw_unless($availableDates, new ScheduleNotAvailableException("No hay espacio disponible para la fecha seleccionada"));
+        if (!$availableDates) {
+            throw new ScheduleNotAvailableException("No hay espacio disponible para la fecha seleccionada");
+        }
 
         $startTime = explode(":", $availableDates->start_time);
         $endTime = explode(":", $availableDates->end_time);
 
         $startDate = $date->copy()->setTime($startTime[0], $startTime[1]);
         $endDate = $date->copy()->setTime($endTime[0], $endTime[1]);
-
 
         $hours = [];
         $current = $startDate->copy();

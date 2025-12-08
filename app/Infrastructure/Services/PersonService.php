@@ -19,23 +19,27 @@ readonly class PersonService implements PersonServiceInterface
     }
 
     /**
-     * @throws PersonExistException
      * @throws Throwable
      */
-    public function create(PersonDTO $personDTO): Person
+    public function create(PersonDTO $personDTO, array $filter = []): Person
     {
-        $person = $this->repository->existsByField(value: $personDTO->email, field: "email");
+        $person = $this->repository->findWithFields($filter)->first();
 
-        throw_if($person, new PersonExistException(message: "Este usuario ya se encuentra registrado"));
+        if ($person) {
+            throw new PersonExistException(
+                id: $person->id,
+                message: "Este usuario ya se encuentra registrado.",
+            );
+        }
 
         return DB::transaction(function () use ($personDTO) {
-            return $this->repository->create($personDTO->toArray());
+            return $this->repository->firstOrCreate($personDTO->toArray());
         });
     }
 
     public function getAllPaginate(int $perPage): LengthAwarePaginator
     {
-       return $this->repository->paginate($perPage);
+        return $this->repository->paginate($perPage);
     }
 
     public function search(string $query): Collection

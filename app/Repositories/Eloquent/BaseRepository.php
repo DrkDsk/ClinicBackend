@@ -23,17 +23,17 @@ class BaseRepository implements BaseRepositoryInterface
 
     public function find(int $id): ?Model
     {
-        return $this->model->where('id', $id)->first();
+        return $this->model->query()->where('id', $id)->first();
     }
 
     public function create(array $data): Model
     {
-        return $this->model->create($data);
+        return $this->model->query()->create($data);
     }
 
     public function update(int $id, array $data): bool
     {
-       $instance = $this->find($id);
+        $instance = $this->find($id);
         return $instance && $instance->update($data);
     }
 
@@ -46,5 +46,14 @@ class BaseRepository implements BaseRepositoryInterface
     public function paginate(int $perPage, array $relations = []): LengthAwarePaginator
     {
         return $this->model->with($relations)->paginate($perPage);
+    }
+
+    public function firstOrCreate(array $payload, array $search = []): Model
+    {
+        if (!count($search)) {
+            $search = $payload;
+        }
+
+        return $this->model->query()->firstOrCreate($search, $payload);
     }
 }
