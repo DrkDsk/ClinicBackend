@@ -23,12 +23,12 @@ class BaseRepository implements BaseRepositoryInterface
 
     public function find(int $id): ?Model
     {
-        return $this->model->where('id', $id)->first();
+        return $this->model->query()->where('id', $id)->first();
     }
 
     public function create(array $data): Model
     {
-        return $this->model->create($data);
+        return $this->model->query()->create($data);
     }
 
     public function update(int $id, array $data): bool
@@ -54,6 +54,6 @@ class BaseRepository implements BaseRepositoryInterface
             $search = $payload;
         }
 
-        return $this->model->firstOrCreate($search, $payload);
+        return $this->model->query()->firstOrCreate($search, $payload);
     }
 }
