@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 interface PersonRepositoryInterface extends BaseRepositoryInterface
 {
-    public function existsByField(string $value, string $field = "phone"): ?Person;
+    public function findByEmail(string $value): ?Person;
 
     public function findWithFields(array $search): Builder;
 
