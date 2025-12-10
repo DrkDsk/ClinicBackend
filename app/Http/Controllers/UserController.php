@@ -23,7 +23,7 @@ class UserController extends Controller
         $user = $request->user();
 
         if (!$user) {
-            return new ErrorResource("El usuario no está autenticado", statusCode: 200);
+            return new ErrorResource("El usuario no está autenticado", statusCode: 401);
         }
 
         $user->load('person', 'roles');
