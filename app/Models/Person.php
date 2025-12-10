@@ -5,17 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Builder;
 
 class Person extends Model
 {
     use HasFactory;
+
     protected $table = "people";
-    protected $fillable = ['name', 'last_name','email', 'birthday', 'phone'];
+    protected $fillable = ['name', 'last_name', 'email', 'birthday', 'phone'];
 
     public function user(): HasOne
     {
         return $this->hasOne(User::class);
     }
+
     public function patient(): HasOne
     {
         return $this->hasOne(Patient::class);
@@ -31,7 +34,7 @@ class Person extends Model
         return $this->hasOne(Doctor::class);
     }
 
-    public function scopeSearch($query, $term): void
+    public function scopeSearch(Builder $query, $term): void
     {
         $columns = ['name', 'email', 'phone'];
 
