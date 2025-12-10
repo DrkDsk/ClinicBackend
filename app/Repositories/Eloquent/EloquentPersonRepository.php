@@ -15,11 +15,12 @@ class EloquentPersonRepository extends BaseRepository implements PersonRepositor
         parent::__construct($model);
     }
 
-    public function existsByField(string $value, string $field = "phone"): ?Person
+    public function findByEmail(string $value): ?Person
     {
-        return $this->model->where($field, $value)->first();
+        return $this->model->query()->where("email", $value)->first();
     }
 
+    // CALL to Person -> scopeSearch
     public function search(string $query): Collection
     {
         return $this->model->search($query)->get();

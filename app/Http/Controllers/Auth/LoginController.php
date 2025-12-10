@@ -2,45 +2,33 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\LoginUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\UserRequest;
 use App\Http\Resources\AuthResource;
 use App\Http\Resources\ErrorResource;
-use App\Repositories\Contract\PersonRepositoryInterface;
+use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
 
-    public function __construct(private readonly PersonRepositoryInterface $personRepository)
+    public function login(LoginRequest $request, LoginUserAction $loginUserAction): ErrorResource|AuthResource
     {
-    }
-
-    public function login(LoginRequest $request): ErrorResource|AuthResource
-    {
-        $email = $request->input('email');
-        $password = $request->input('password');
-
-        $person = $this->personRepository->existsByField(value: $email, field: "email");
-        $user = $person?->user;
-        $isValid = $user && Hash::check($password, $user->password);
-
-        if (!$isValid) {
-            return new ErrorResource("Credenciales incorrectas", statusCode: 401);
+        try {
+            $user = $loginUserAction($request->input('email'), $request->input('password'));
+        } catch (Exception $e) {
+            return new ErrorResource($e->getMessage(), null, 401);
         }
 
-        $token = $user->createToken("")->plainTextToken;
+        $user->tokens()->delete();
+        $token = $user->createToken('auth')->plainTextToken;
 
-        return new AuthResource(
-            message: "Login exitoso",
-            token: $token,
-            user: $user,
-        );
+        return new AuthResource("Login exitoso", $token, $user);
     }
 
-    public function logout(Request $request): JsonResponse
+    public function logout(UserRequest $request): JsonResponse
     {
         $request->user()->tokens()->delete();
 
