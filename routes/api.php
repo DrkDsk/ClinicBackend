@@ -26,7 +26,7 @@ Route::middleware(['auth:sanctum', "role_or_admin:$receptionistRole"])->group(fu
     });
 
     Route::prefix('patients')->group(function () {
-        Route::get('get',[PatientController::class, 'get']);
+        Route::get('get', [PatientController::class, 'get']);
         Route::post('create', [PatientController::class, 'store']);
     });
 
@@ -45,7 +45,6 @@ Route::middleware(['auth:sanctum', "role_or_admin:$receptionistRole"])->group(fu
 });
 
 
-//NO AUTH
 Route::prefix('auth')->group(function () {
     Route::post('login', [LoginController::class, 'login']);
     Route::post('logout', [LoginController::class, 'logout']);
